@@ -1,15 +1,23 @@
-import { WorkerMessage } from "./types";
+import {
+  WorkerRequest,
+  WorkerResponse,
+  AttractorConfig,
+  PointData,
+  ErrorData,
+  CanvasError,
+  WorkerError,
+} from "./types";
 
 const run = async () => {
   const canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
   if (!canvas) {
-    throw new Error("Cannot get canvas");
+    throw new CanvasError("Cannot get canvas element");
   }
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("Cannot get canvas context");
+    throw new CanvasError("Cannot get canvas 2D context");
   }
-  
+
   const dpr = window.devicePixelRatio || 1;
   canvas.width = window.innerWidth * dpr;
   canvas.height = window.innerHeight * dpr;
@@ -18,51 +26,57 @@ const run = async () => {
   context.setTransform(dpr, 0, 0, dpr, 0, 0); // scale all drawing
 
   console.log("Starting worker...");
-  const {
-    points,
-    bounds,
-    pointCount,
-  } = await new Promise<{
-    points: Float32Array,
-    bounds: {
-      minX: number,
-      maxX: number,
-      minY: number,
-      maxY: number,
-    },
-    pointCount: number,
-  }>((resolve, reject) => {
-    const worker = new Worker("./worker.js");
-    const messageToWorker: WorkerMessage<{
-      attractor: string;
-      points: number;
-    }> = {
-      type: "lyapunov",
-      payload: {
-        attractor: "MSSSRRPADDSO",
-        points: 100_000,
-      },
-    }
-    worker.postMessage(messageToWorker);
-    worker.onmessage = (event: {
-      type: string;
-      data: WorkerMessage<{
-        points: Float32Array,
-        pointCount: number,
-        bounds: {
-          minX: number,
-          maxX: number,
-          minY: number,
-          maxY: number,
+  const { points, bounds, pointCount } = await new Promise<PointData>(
+    (resolve, reject) => {
+      const worker = new Worker("./worker.js") as Worker;
+      const config: AttractorConfig = {
+        coefficients: "MSSSRRPADDSO",
+        pointCount: 400_000,
+        burnInIterations: 100,
+        maxPointValue: 1e6,
+      };
+
+      const messageToWorker: WorkerRequest = {
+        type: "generatePoints",
+        payload: config,
+      };
+
+      worker.postMessage(messageToWorker);
+
+      worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+        const response = event.data;
+
+        if (response.type === "pointsGenerated") {
+          resolve(response.payload as PointData);
+        } else if (response.type === "error") {
+          const errorData = response.payload as ErrorData;
+          reject(new WorkerError(errorData.message, errorData.code));
+        } else {
+          reject(
+            new WorkerError(
+              `Unknown response type: ${response.type}`,
+              "UNKNOWN_RESPONSE_TYPE"
+            )
+          );
         }
-      }>
-    }) => {
-      resolve(event.data.payload);
-    };
-    worker.onerror = (error) => {
-      reject(error);
-    };
-  });
+      };
+
+      worker.onerror = (error) => {
+        reject(
+          new WorkerError(`Worker error: ${error.message}`, "WORKER_ERROR")
+        );
+      };
+
+      worker.onmessageerror = (error) => {
+        reject(
+          new WorkerError(
+            `Worker message error: ${error}`,
+            "WORKER_MESSAGE_ERROR"
+          )
+        );
+      };
+    }
+  );
 
   console.log("Points generated:", pointCount);
 
@@ -80,12 +94,20 @@ const run = async () => {
     const canvasX = Math.floor((x - bounds.minX) * scaleX);
     const canvasY = Math.floor((y - bounds.minY) * scaleY);
 
-    if (canvasX < 0 || canvasX >= canvas.width || canvasY < 0 || canvasY >= canvas.height) {
+    if (
+      canvasX < 0 ||
+      canvasX >= canvas.width ||
+      canvasY < 0 ||
+      canvasY >= canvas.height
+    ) {
       continue;
     }
 
     pixelDensities[canvasY * canvas.width + canvasX]++;
-    maxDensity = Math.max(maxDensity, pixelDensities[canvasY * canvas.width + canvasX]);
+    maxDensity = Math.max(
+      maxDensity,
+      pixelDensities[canvasY * canvas.width + canvasX]
+    );
   }
 
   console.log("Max density:", maxDensity);
@@ -106,9 +128,7 @@ const run = async () => {
   for (let i = 0; i < pixelDensities.length; i++) {
     const density = pixelDensities[i];
     if (density > 0) {
-      const [r, g, b] = getColor(
-        Math.pow(density / maxDensity, 0.5)
-      );
+      const [r, g, b] = getColor(Math.pow(density / maxDensity, 0.5));
       imageData.data[i * 4] = r; // R
       imageData.data[i * 4 + 1] = g; // G
       imageData.data[i * 4 + 2] = b; // B
@@ -120,4 +140,6 @@ const run = async () => {
   console.log("Done.");
 };
 
-run();
+run().catch((error) => {
+  console.error("Application error:", error);
+});

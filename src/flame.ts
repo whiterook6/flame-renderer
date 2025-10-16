@@ -12,7 +12,7 @@ export const Flame = (coefficients: string) => {
   const yCoefficients = Array.from(coefficients.slice(6, 12)).map(
     (ch) => -1.2 + (ch.charCodeAt(0) - 65) * 0.1
   ) as [number, number, number, number, number, number];
-  
+
   const [a0, a1, a2, a3, a4, a5] = xCoefficients;
   const [b0, b1, b2, b3, b4, b5] = yCoefficients;
 
@@ -36,7 +36,7 @@ export const Flame = (coefficients: string) => {
       !Number.isNaN(point[0]) &&
       !Number.isNaN(point[1])
     );
-  }
+  };
 
   // Iterator generator
   function* iterator(start: Point2) {
@@ -59,4 +59,4 @@ export const Flame = (coefficients: string) => {
   }
 
   return iterator;
-}
+};

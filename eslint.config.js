@@ -23,6 +23,9 @@ export default [
         MouseEvent: "readonly",
         setInterval: "readonly",
         clearInterval: "readonly",
+        Worker: "readonly",
+        MessageEvent: "readonly",
+        ErrorEvent: "readonly",
         // Node.js globals (for build scripts)
         NodeJS: "readonly",
         WheelEvent: "readonly",

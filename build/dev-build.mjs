@@ -30,6 +30,7 @@ const run = async () => {
             sourcemap: true,
             outdir: 'output', // outputs output/index.js and output/worker.js
             platform: 'browser', // or 'node' as needed
+            resolveExtensions: ['.ts', '.d.ts', '.js'],
         })
     ]);
 };

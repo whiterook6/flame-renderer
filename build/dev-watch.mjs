@@ -29,6 +29,7 @@ const run = async () => {
         sourcemap: true,
         outdir: 'output', // outputs output/index.js and output/worker.js
         platform: 'browser',
+        resolveExtensions: ['.ts', '.d.ts', '.js'],
     });
     
     return context.watch();
