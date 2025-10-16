@@ -1,70 +1,31 @@
-import {
-  WorkerRequest,
-  WorkerResponse,
-  AttractorConfig,
-  PointData,
-  ErrorData,
-  WorkerError,
-} from "./types";
 import { CanvasManager } from "./canvas";
+import { AttractorConfig, ProgressData } from "./types";
+import { WorkerClient } from "./worker/worker-client";
 
 const run = async () => {
   // Set up canvas with proper scaling
   const canvasManager = new CanvasManager("myCanvas");
   canvasManager.resizeCanvas();
   const context = canvasManager.context;
-  const { width: canvasWidth, height: canvasHeight } = canvasManager.getDimensions();
+  const { width: canvasWidth, height: canvasHeight } =
+    canvasManager.getDimensions();
 
   console.log("Starting worker...");
-  const { points, bounds, pointCount } = await new Promise<PointData>(
-    (resolve, reject) => {
-      const worker = new Worker("./worker.js") as Worker;
-      const config: AttractorConfig = {
-        coefficients: "MSSSRRPADDSO",
-        pointCount: 400_000,
-        burnInIterations: 100,
-        maxPointValue: 1e6,
-      };
+  const workerClient = new WorkerClient("./worker.js");
 
-      const messageToWorker: WorkerRequest = {
-        type: "generatePoints",
-        payload: config,
-      };
+  const config: AttractorConfig = {
+    coefficients: "MSSSRRPADDSO",
+    pointCount: 400_000,
+    burnInIterations: 100,
+    maxPointValue: 1e6,
+  };
 
-      worker.postMessage(messageToWorker);
-
-      worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-        const response = event.data;
-
-        if (response.type === "pointsGenerated") {
-          resolve(response.payload as PointData);
-        } else if (response.type === "error") {
-          const errorData = response.payload as ErrorData;
-          reject(new WorkerError(errorData.message, errorData.code));
-        } else {
-          reject(
-            new WorkerError(
-              `Unknown response type: ${response.type}`,
-              "UNKNOWN_RESPONSE_TYPE"
-            )
-          );
-        }
-      };
-
-      worker.onerror = (error) => {
-        reject(
-          new WorkerError(`Worker error: ${error.message}`, "WORKER_ERROR")
-        );
-      };
-
-      worker.onmessageerror = (error) => {
-        reject(
-          new WorkerError(
-            `Worker message error: ${error}`,
-            "WORKER_MESSAGE_ERROR"
-          )
-        );
-      };
+  const { points, bounds, pointCount } = await workerClient.generatePoints(
+    config,
+    (progress: ProgressData) => {
+      console.log(
+        `Progress: ${progress.percentage}% (${progress.currentPoints}/${progress.totalPoints} points)`
+      );
     }
   );
 

@@ -47,9 +47,10 @@ export interface WorkerRequest {
   payload: AttractorConfig;
 }
 
-export interface WorkerResponse {
-  type: "pointsGenerated" | "error";
-  payload: PointData | ErrorData;
+export interface ProgressData {
+  currentPoints: number;
+  totalPoints: number;
+  percentage: number;
 }
 
 export interface ErrorData {
@@ -57,6 +58,23 @@ export interface ErrorData {
   code: string;
   stack?: string;
 }
+
+export type ErrorResponse = {
+  type: "error";
+  payload: ErrorData;
+};
+
+export type ProgressResponse = {
+  type: "progress";
+  payload: ProgressData;
+};
+
+export type ResultsResponse = {
+  type: "pointsGenerated";
+  payload: PointData;
+};
+
+export type WorkerResponse = ErrorResponse | ProgressResponse | ResultsResponse;
 
 export type WorkerMessage = WorkerRequest | WorkerResponse;
 

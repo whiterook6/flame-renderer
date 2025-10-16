@@ -40,12 +40,12 @@ export class CanvasManager {
    * Resizes the canvas to match the current window size
    */
   resizeCanvas(): void {
-    const {innerWidth: width, innerHeight: height} = window;
+    const { innerWidth: width, innerHeight: height } = window;
     this.canvas.width = width * this.dpr;
-    this.canvas.height = height * this.dpr; 
+    this.canvas.height = height * this.dpr;
     this.canvas.style.width = width + "px";
     this.canvas.style.height = height + "px";
-    
+
     // Scale all drawing operations by the device pixel ratio
     this.context.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
