@@ -4,26 +4,16 @@ import {
   AttractorConfig,
   PointData,
   ErrorData,
-  CanvasError,
   WorkerError,
 } from "./types";
+import { CanvasManager } from "./canvas";
 
 const run = async () => {
-  const canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
-  if (!canvas) {
-    throw new CanvasError("Cannot get canvas element");
-  }
-  const context = canvas.getContext("2d");
-  if (!context) {
-    throw new CanvasError("Cannot get canvas 2D context");
-  }
-
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = window.innerWidth * dpr;
-  canvas.height = window.innerHeight * dpr;
-  canvas.style.width = window.innerWidth + "px";
-  canvas.style.height = window.innerHeight + "px";
-  context.setTransform(dpr, 0, 0, dpr, 0, 0); // scale all drawing
+  // Set up canvas with proper scaling
+  const canvasManager = new CanvasManager("myCanvas");
+  canvasManager.resizeCanvas();
+  const context = canvasManager.context;
+  const { width: canvasWidth, height: canvasHeight } = canvasManager.getDimensions();
 
   console.log("Starting worker...");
   const { points, bounds, pointCount } = await new Promise<PointData>(
@@ -82,8 +72,8 @@ const run = async () => {
 
   // Render points to canvas
   console.log("Rendering points...");
-  const pixelDensities = new Float32Array(canvas.width * canvas.height);
-  const minDimension = Math.min(canvas.width, canvas.height);
+  const pixelDensities = new Float32Array(canvasWidth * canvasHeight);
+  const minDimension = Math.min(canvasWidth, canvasHeight);
   const scaleX = minDimension / (bounds.maxX - bounds.minX);
   const scaleY = minDimension / (bounds.maxY - bounds.minY);
   let maxDensity = 0;
@@ -96,17 +86,17 @@ const run = async () => {
 
     if (
       canvasX < 0 ||
-      canvasX >= canvas.width ||
+      canvasX >= canvasWidth ||
       canvasY < 0 ||
-      canvasY >= canvas.height
+      canvasY >= canvasHeight
     ) {
       continue;
     }
 
-    pixelDensities[canvasY * canvas.width + canvasX]++;
+    pixelDensities[canvasY * canvasWidth + canvasX]++;
     maxDensity = Math.max(
       maxDensity,
-      pixelDensities[canvasY * canvas.width + canvasX]
+      pixelDensities[canvasY * canvasWidth + canvasX]
     );
   }
 
@@ -124,7 +114,7 @@ const run = async () => {
   };
 
   console.log("Drawing to canvas...");
-  const imageData = context.createImageData(canvas.width, canvas.height);
+  const imageData = context.createImageData(canvasWidth, canvasHeight);
   for (let i = 0; i < pixelDensities.length; i++) {
     const density = pixelDensities[i];
     if (density > 0) {
