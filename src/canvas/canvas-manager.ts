@@ -40,6 +40,9 @@ export class CanvasManager {
    * Resizes the canvas to match the current window size
    */
   resizeCanvas(): void {
+    // Recalculate DPR in case it changed (e.g., moving between displays)
+    this.dpr = window.devicePixelRatio || 1;
+    
     const { innerWidth: width, innerHeight: height } = window;
     this.canvas.width = width * this.dpr;
     this.canvas.height = height * this.dpr;

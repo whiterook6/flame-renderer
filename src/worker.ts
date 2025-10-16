@@ -56,7 +56,7 @@ function generatePoints(config: AttractorConfig): void {
     };
 
     const iterator = startFlame(point);
-    const progressInterval = Math.max(1, Math.floor(maxPointCount / 100)); // Report progress every 1%
+    const progressInterval = Math.max(100, Math.floor(maxPointCount / 100)); // Report progress every 1% or every 100 points, whichever is larger
 
     for (const [x, y] of iterator) {
       if (pointCount >= maxPointCount) {

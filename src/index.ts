@@ -1,5 +1,5 @@
 import { CanvasManager } from "./canvas";
-import { AttractorConfig, ProgressData } from "./types";
+import { AttractorConfig, GeneratePointsRequest, PointData, ProgressData } from "./types";
 import { WorkerClient } from "./worker/worker-client";
 
 const run = async () => {
@@ -20,14 +20,17 @@ const run = async () => {
     maxPointValue: 1e6,
   };
 
-  const { points, bounds, pointCount } = await workerClient.generatePoints(
-    config,
+  const { points, bounds, pointCount } = await workerClient.sendMessage<GeneratePointsRequest, PointData>(
+    { type: "generatePoints", payload: config },
     (progress: ProgressData) => {
       console.log(
         `Progress: ${progress.percentage}% (${progress.currentPoints}/${progress.totalPoints} points)`
       );
     }
   );
+
+  // Terminate the worker to free memory since we're done with it
+  workerClient.terminate();
 
   console.log("Points generated:", pointCount);
 

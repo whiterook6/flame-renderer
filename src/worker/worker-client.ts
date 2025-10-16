@@ -4,36 +4,47 @@ import {
   ProgressData,
   WorkerError,
   WorkerRequest,
-  WorkerResponse,
+  WorkerResponse
 } from "../types";
 
-export interface Job {
+export interface Job<TRequest extends WorkerRequest, TResult> {
   id: string;
-  config: AttractorConfig;
-  resolve: (value: PointData) => void;
+  request: TRequest;
+  resolve: (value: TResult) => void;
   reject: (error: WorkerError) => void;
   onProgress?: (progress: ProgressData) => void;
 }
 
 export class WorkerClient {
   private worker: Worker | null = null;
-  private currentJob: Job | null = null;
-  private jobQueue: Job[] = [];
+  private currentJob: Job<any, any> | null = null;
+  private jobQueue: Job<any, any>[] = [];
   private isProcessing = false;
 
   constructor(private workerPath: string) {}
 
   /**
-   * Queues a point generation job and returns a promise
+   * Generic method to send a message to the worker and handle the response
+   * 
+   * @example
+   * // Send a generatePoints request
+   * const result = await workerClient.sendMessage(
+   *   { type: "generatePoints", payload: config },
+   *   (progress) => console.log(`Progress: ${progress.percentage}%`)
+   * );
+   * 
+   * @param request - The message to send to the worker
+   * @param onProgress - Optional callback for progress updates
+   * @returns Promise that resolves with the worker's response
    */
-  async generatePoints(
-    config: AttractorConfig,
+  async sendMessage<TRequest extends WorkerRequest, TResult>(
+    request: TRequest,
     onProgress?: (progress: ProgressData) => void
-  ): Promise<PointData> {
-    return new Promise<PointData>((resolve, reject) => {
-      const job: Job = {
+  ): Promise<TResult> {
+    return new Promise<TResult>((resolve, reject) => {
+      const job: Job<TRequest, TResult> = {
         id: this.generateJobId(),
-        config,
+        request,
         resolve,
         reject,
         onProgress,
@@ -42,6 +53,19 @@ export class WorkerClient {
       this.jobQueue.push(job);
       this.processNextJob();
     });
+  }
+
+  /**
+   * Convenience method for point generation
+   */
+  async generatePoints(
+    config: AttractorConfig,
+    onProgress?: (progress: ProgressData) => void
+  ): Promise<PointData> {
+    return this.sendMessage(
+      { type: "generatePoints", payload: config },
+      onProgress
+    );
   }
 
   /**
@@ -56,7 +80,7 @@ export class WorkerClient {
     // Reject all pending jobs
     const allJobs = [this.currentJob, ...this.jobQueue].filter(
       Boolean
-    ) as Job[];
+    ) as Job<any, any>[];
     allJobs.forEach((job) => {
       job.reject(new WorkerError("Worker terminated", "WORKER_TERMINATED"));
     });
@@ -110,7 +134,7 @@ export class WorkerClient {
     }
   }
 
-  private async executeJob(job: Job): Promise<void> {
+  private async executeJob(job: Job<any, any>): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       // Create worker if needed
       if (!this.worker) {
@@ -118,10 +142,7 @@ export class WorkerClient {
         this.setupWorkerEventHandlers();
       }
 
-      const messageToWorker: WorkerRequest = {
-        type: "generatePoints",
-        payload: job.config,
-      };
+      const messageToWorker = job.request;
 
       // Set up one-time handlers for this job
       const cleanup = () => {
@@ -139,7 +160,9 @@ export class WorkerClient {
         switch (response.type) {
           case "pointsGenerated":
             cleanup();
-            job.resolve(response.payload);
+            // For now, we assume all successful responses return PointData
+            // In the future, this could be made more generic with response type mapping
+            job.resolve(response.payload as any);
             resolve();
             break;
 
@@ -183,7 +206,7 @@ export class WorkerClient {
       this.worker.onmessageerror = (error) => {
         cleanup();
         const workerError = new WorkerError(
-          `Worker message error: ${error}`,
+          error instanceof ErrorEvent ? error.message : "Message parsing failed",
           "WORKER_MESSAGE_ERROR"
         );
         job.reject(workerError);
@@ -205,6 +228,6 @@ export class WorkerClient {
   }
 
   private generateJobId(): string {
-    return `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `job_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 }
