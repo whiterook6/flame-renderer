@@ -42,14 +42,17 @@ export interface PointData {
   bounds: Bounds;
 }
 
-export interface WorkerRequest {
+export interface GeneratePointsRequest {
   type: "generatePoints";
   payload: AttractorConfig;
 }
 
-export interface WorkerResponse {
-  type: "pointsGenerated" | "error";
-  payload: PointData | ErrorData;
+export type WorkerRequest = GeneratePointsRequest;
+
+export interface ProgressData {
+  currentPoints: number;
+  totalPoints: number;
+  percentage: number;
 }
 
 export interface ErrorData {
@@ -58,7 +61,22 @@ export interface ErrorData {
   stack?: string;
 }
 
-export type WorkerMessage = WorkerRequest | WorkerResponse;
+export type ErrorResponse = {
+  type: "error";
+  payload: ErrorData;
+};
+
+export type ProgressResponse = {
+  type: "progress";
+  payload: ProgressData;
+};
+
+export type ResultsResponse = {
+  type: "pointsGenerated";
+  payload: PointData;
+};
+
+export type WorkerResponse = ErrorResponse | ProgressResponse | ResultsResponse;
 
 // Error classes
 export class AttractorError extends Error {

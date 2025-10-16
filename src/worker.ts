@@ -2,13 +2,13 @@
 
 import { Flame } from "./flame";
 import {
-  WorkerRequest,
-  WorkerResponse,
   AttractorConfig,
-  PointData,
-  ErrorData,
   AttractorError,
   Bounds,
+  ErrorResponse,
+  ProgressResponse,
+  ResultsResponse,
+  WorkerRequest,
 } from "./types";
 
 // Web Worker for heavy calculations
@@ -26,14 +26,14 @@ self.addEventListener("message", (event: { data: WorkerRequest }) => {
         );
     }
   } catch (error) {
-    const errorResponse: WorkerResponse = {
+    const errorResponse: ErrorResponse = {
       type: "error",
       payload: {
         message:
           error instanceof Error ? error.message : "Unknown error occurred",
         code: error instanceof AttractorError ? error.code : "UNKNOWN_ERROR",
         stack: error instanceof Error ? error.stack : undefined,
-      } as ErrorData,
+      },
     };
     self.postMessage(errorResponse);
   }
@@ -56,6 +56,8 @@ function generatePoints(config: AttractorConfig): void {
     };
 
     const iterator = startFlame(point);
+    const progressInterval = Math.max(100, Math.floor(maxPointCount / 100)); // Report progress every 1% or every 100 points, whichever is larger
+
     for (const [x, y] of iterator) {
       if (pointCount >= maxPointCount) {
         break;
@@ -75,6 +77,19 @@ function generatePoints(config: AttractorConfig): void {
       bounds.minY = Math.min(bounds.minY, y);
       bounds.maxY = Math.max(bounds.maxY, y);
       pointCount++;
+
+      // Send progress updates
+      if (pointCount % progressInterval === 0) {
+        const progressResponse: ProgressResponse = {
+          type: "progress",
+          payload: {
+            currentPoints: pointCount,
+            totalPoints: maxPointCount,
+            percentage: Math.round((pointCount / maxPointCount) * 100),
+          },
+        };
+        self.postMessage(progressResponse);
+      }
     }
 
     // Validate bounds
@@ -91,13 +106,13 @@ function generatePoints(config: AttractorConfig): void {
     }
 
     // Send back the generated points
-    const response: WorkerResponse = {
+    const response: ResultsResponse = {
       type: "pointsGenerated",
       payload: {
         points,
         pointCount,
         bounds,
-      } as PointData,
+      },
     };
     self.postMessage(response);
   } catch (error) {
