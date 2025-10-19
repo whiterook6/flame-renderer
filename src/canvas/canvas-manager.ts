@@ -37,17 +37,20 @@ export class CanvasManager {
   }
 
   /**
-   * Resizes the canvas to match the current window size
+   * Sets the canvas internal resolution to match its display size
    */
   resizeCanvas(): void {
     // Recalculate DPR in case it changed (e.g., moving between displays)
     this.dpr = window.devicePixelRatio || 1;
     
-    const { innerWidth: width, innerHeight: height } = window;
+    // Get the actual display size of the canvas (as sized by CSS)
+    const rect = this.canvas.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    
+    // Set the internal canvas resolution to match display size * DPR
     this.canvas.width = width * this.dpr;
     this.canvas.height = height * this.dpr;
-    this.canvas.style.width = width + "px";
-    this.canvas.style.height = height + "px";
 
     // Scale all drawing operations by the device pixel ratio
     this.context.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);

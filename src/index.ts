@@ -1,11 +1,13 @@
 import { CanvasManager } from "./canvas";
 import { AttractorConfig, GeneratePointsRequest, PointData, ProgressData } from "./types";
 import { WorkerClient } from "./worker/worker-client";
+import "./styles.scss";
 
 const run = async () => {
   // Set up canvas with proper scaling
   const canvasManager = new CanvasManager("myCanvas");
   canvasManager.resizeCanvas();
+  
   const context = canvasManager.context;
   const { width: canvasWidth, height: canvasHeight } =
     canvasManager.getDimensions();
@@ -15,7 +17,7 @@ const run = async () => {
 
   const config: AttractorConfig = {
     coefficients: "MSSSRRPADDSO",
-    pointCount: 400_000,
+    pointCount: 100_000,
     burnInIterations: 100,
     maxPointValue: 1e6,
   };
@@ -32,10 +34,6 @@ const run = async () => {
   // Terminate the worker to free memory since we're done with it
   workerClient.terminate();
 
-  console.log("Points generated:", pointCount);
-
-  // Render points to canvas
-  console.log("Rendering points...");
   const pixelDensities = new Float32Array(canvasWidth * canvasHeight);
   const minDimension = Math.min(canvasWidth, canvasHeight);
   const scaleX = minDimension / (bounds.maxX - bounds.minX);
@@ -64,7 +62,6 @@ const run = async () => {
     );
   }
 
-  console.log("Max density:", maxDensity);
   const getColor = (t: number): [number, number, number] => {
     if (t < 0.5) {
       // dark orange → yellow
@@ -77,7 +74,6 @@ const run = async () => {
     }
   };
 
-  console.log("Drawing to canvas...");
   const imageData = context.createImageData(canvasWidth, canvasHeight);
   for (let i = 0; i < pixelDensities.length; i++) {
     const density = pixelDensities[i];
@@ -91,7 +87,6 @@ const run = async () => {
   }
 
   context.putImageData(imageData, 0, 0);
-  console.log("Done.");
 };
 
 run().catch((error) => {

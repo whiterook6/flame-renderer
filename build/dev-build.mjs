@@ -1,4 +1,5 @@
 import * as esbuild from "esbuild";
+import { sassPlugin } from 'esbuild-sass-plugin';
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from 'url';
@@ -31,6 +32,7 @@ const run = async () => {
             outdir: 'output', // outputs output/index.js and output/worker.js
             platform: 'browser', // or 'node' as needed
             resolveExtensions: ['.ts', '.d.ts', '.js'],
+            plugins: [sassPlugin()],
         })
     ]);
 };
